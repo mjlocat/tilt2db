@@ -1,5 +1,6 @@
 import os
 import sys
+import argparse
 from datetime import datetime
 import aioblescan
 import asyncio
@@ -23,13 +24,24 @@ class DB:
 
 
 class TILTReader:
-  def __init__(self):
-    self.config = yaml.safe_load(open('config.yaml', 'r'))
+  def __init__(self, args):
+    self.args = args
+    configfile = 'config.yaml'
+    if args.config is not None:
+      configfile = args.config
+    self.config = yaml.safe_load(open(configfile, 'r'))
     self.db = DB(self.config)
+    self.lastreading = datetime.min
     self.run_event_loop()
 
 
   def ble_reader(self, data):
+    if self.args.time is not None:
+      now = datetime.now()
+      duration = now - self.lastreading
+      if duration.total_seconds() < self.args.time:
+        return
+
     el = asyncio.get_running_loop()
     event = aioblescan.HCI_Event()
     event.decode(data)
@@ -46,7 +58,10 @@ class TILTReader:
       temperature = reading['major'] + temp_correction
       sg = (reading['minor'] / 1000) + sg_correction
       self.db.save_values(reading['uuid'], temperature, sg, reading['tx_power'], reading['rssi'], reading['mac'])
-      el.stop()
+      if self.args.single:
+        el.stop()
+      else:
+        self.lastreading = datetime.now()
 
 
 
@@ -67,9 +82,16 @@ class TILTReader:
       conn.close()
       el.close()
 
+
 if __name__ == "__main__":
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-c', '--config', help="Location of the configuration file")
+  group = parser.add_mutually_exclusive_group(required=True)
+  group.add_argument('-s', '--single', help="Get one reading then exit", action="store_true")
+  group.add_argument('-t', '--time', help="Minimum time between stored readings in seconds", type=int)
+  args = parser.parse_args()
   if os.getuid() != 0:
     sys.stderr.write("Must run as root to scan BLE devices\n")
     sys.exit(-1)
 
-  TILTReader()
+  TILTReader(args)
