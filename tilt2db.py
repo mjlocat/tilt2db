@@ -13,11 +13,11 @@ class DB:
     self.dbconfig = config['db']
     
 
-  def save_values(self, uuid, temperature, sg, tx_power, rssi, mac):
-    insert = "insert into tilt_readings (uuid, temperature, sg, tx_power, rssi, mac, insert_dttm) values (%s, %s, %s, %s, %s, %s, %s)"
+  def save_values(self, color, temperature, sg, tx_power, rssi, mac):
+    insert = "insert into tilt_readings (color, temperature, sg, tx_power, rssi, mac, insert_dttm) values (%s, %s, %s, %s, %s, %s, %s)"
     cnx = myc.connect(**self.dbconfig)
     cursor = cnx.cursor()
-    cursor.execute(insert, (uuid, temperature, sg, tx_power, rssi, mac, datetime.now()))
+    cursor.execute(insert, (color, temperature, sg, tx_power, rssi, mac, datetime.now()))
     cnx.commit()
     cursor.close()
     cnx.close()
@@ -33,6 +33,20 @@ class TILTReader:
     self.db = DB(self.config)
     self.lastreading = datetime.min
     self.run_event_loop()
+
+
+  def decode_tilt_color(self, uuid):
+    color_map = {
+      'a495bb60c5b14b44b5121370f02d74de': 'Blue',
+      'a495bb70c5b14b44b5121370f02d74de': 'Yellow',
+      'a495bb20c5b14b44b5121370f02d74de': 'Green',
+      'a495bb50c5b14b44b5121370f02d74de': 'Orange',
+      'a495bb10c5b14b44b5121370f02d74de': 'Red',
+      'a495bb80c5b14b44b5121370f02d74de': 'Pink',
+      'a495bb30c5b14b44b5121370f02d74de': 'Black',
+      'a495bb40c5b14b44b5121370f02d74de': 'Purple'
+    }
+    return color_map.get(uuid, None)
 
 
   def ble_reader(self, data):
@@ -57,7 +71,8 @@ class TILTReader:
 
       temperature = reading['major'] + temp_correction
       sg = (reading['minor'] / 1000) + sg_correction
-      self.db.save_values(reading['uuid'], temperature, sg, reading['tx_power'], reading['rssi'], reading['mac'])
+      color = self.decode_tilt_color(reading['uuid'])
+      self.db.save_values(color, temperature, sg, reading['tx_power'], reading['rssi'], reading['mac'])
       if self.args.single:
         el.stop()
       else:

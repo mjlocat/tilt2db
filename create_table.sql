@@ -1,6 +1,6 @@
 CREATE TABLE tilt_readings (
   id BIGINT NOT NULL AUTO_INCREMENT,
-  uuid CHAR(32) NOT NULL,
+  color VARCHAR(6) NOT NULL,
   temperature INTEGER NOT NULL,
   sg FLOAT NOT NULL,
   tx_power INTEGER,
