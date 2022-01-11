@@ -31,7 +31,7 @@ class TILTReader:
       configfile = args.config
     self.config = yaml.safe_load(open(configfile, 'r'))
     self.db = DB(self.config)
-    self.lastreading = datetime.min
+    self.lastreading = {}
     self.run_event_loop()
 
 
@@ -50,12 +50,6 @@ class TILTReader:
 
 
   def ble_reader(self, data):
-    if self.args.time is not None:
-      now = datetime.now()
-      duration = now - self.lastreading
-      if duration.total_seconds() < self.args.time:
-        return
-
     el = asyncio.get_running_loop()
     event = aioblescan.HCI_Event()
     event.decode(data)
@@ -72,12 +66,19 @@ class TILTReader:
       temperature = reading['major'] + temp_correction
       sg = (reading['minor'] / 1000) + sg_correction
       color = self.decode_tilt_color(reading['uuid'])
+
+      if self.args.time is not None:
+        prevreading = self.lastreading.get(color, datetime.min)
+        now = datetime.now()
+        duration = now - prevreading
+        if duration.total_seconds() < self.args.time:
+          return # Skip over everything else, timer hasn't elapsed yet
+
       self.db.save_values(color, temperature, sg, reading['tx_power'], reading['rssi'], reading['mac'])
       if self.args.single:
         el.stop()
       else:
-        self.lastreading = datetime.now()
-
+        self.lastreading[color] = datetime.now()
 
 
   def run_event_loop(self):
