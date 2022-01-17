@@ -11,6 +11,15 @@ The Android app for the Tilt Hydrometer requires a device is always on and in BL
 * A MySQL or MariaDB database
 
 ## Installation
+1. Install the `aioblescan` package, but not the one from `pip` (TODO: eventually update this code to use aioblescan from pip)
+
+    ``` sh
+    wget https://github.com/baronbrew/aioblescan/archive/master.zip
+    unzip master.zip
+    cd aioblescan-master/
+    sudo -H python3 setup.py install
+    ```
+
 1. Clone the repository
 
     `git clone https://github.com/mjlocat/tilt2db.git && cd tilt2db`
@@ -59,4 +68,3 @@ temp_correction: 1 # Add one degree to the reading
 sg_correction: -0.003 # Subtract 3 thousandths from the reading
 ```
 *NOTE*: In this early stage, I'm assuming the offsets are linear. The [Fermentrack documentation](https://docs.fermentrack.com/en/master/gravitysensors/tilt.html#guided-calibration) leads me to believe it may be non-linear.
- 
